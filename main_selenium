@@ -9,7 +9,7 @@ import time
 
 # --- 1. เตรียมข้อมูล ---
 print("🔍 โหลดไฟล์ข้อมูล...")
-df = pd.read_csv('participant_precamp.csv', dtype=str)
+df = pd.read_csv('participant_precamp.csv', dtype=str) #--rename the file correctly the same--
 report = {'H': 0, 'S': 0, 'P': 0, 'Error': 0}
 
 # --- 2. ตั้งค่า Browser ---
