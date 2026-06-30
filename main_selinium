@@ -1,0 +1,103 @@
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.support.ui import Select, WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import pandas as pd
+import time
+
+# --- 1. เตรียมข้อมูล ---
+print("🔍 โหลดไฟล์ข้อมูล...")
+df = pd.read_csv('participant_precamp.csv', dtype=str)
+report = {'H': 0, 'S': 0, 'P': 0, 'Error': 0}
+
+# --- 2. ตั้งค่า Browser ---
+driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+driver.maximize_window()
+wait = WebDriverWait(driver, 10) # เวลารอเหลือ 10 วินาที
+
+# --- 3. Login Backend ---
+print("🔑 Login Backend...")
+driver.get("https://event.osda.kmitl.ac.th/backend/login")
+try:
+    wait.until(EC.presence_of_element_located((By.NAME, "username"))).send_keys("ENTER USERNAME HERE") #--ENTER YOUR USERNAME HERE--
+    driver.find_element(By.NAME, "password").send_keys("ENTER PASSWORD HERE") #--ENTER YOUR PASSWORD HERE--
+    driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
+    print("✅ เข้าสู่ระบบสำเร็จ!")
+    time.sleep(2)
+except:
+    print("❌ Login พลาด"); driver.quit(); exit()
+
+# --- 4. วนลูปทำงาน (เพิ่มรหัสนักศึกษาทีละรายชื่อ) ---
+for index, row in df.iterrows():
+    student_id = str(row['รหัสนักศึกษา']).strip()
+    status_type = str(row['สถานะ']).strip().upper()
+    print(f"🚀 [{index+1}/{len(df)}] รหัส: {student_id} ({status_type})", end=" ")
+
+    try:
+        if status_type in ['H', 'S']:
+            driver.get("https://event.osda.kmitl.ac.th/backend/event/ENTER EVENT ID HERE/transcript") #--ENTER EVENT ID HERE--
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button[data-target='#addStaffModal']"))).click()
+            
+            id_field = wait.until(EC.visibility_of_element_located((By.NAME, "student_id")))
+            id_field.send_keys(student_id)
+            
+            select = Select(driver.find_element(By.NAME, "status"))
+            select.select_by_value(status_type)
+            
+            # กดปุ่มบันทึก
+            driver.find_element(By.CSS_SELECTOR, "button.btn-success").click()
+            
+            # === ระบบดักจับ Error ===
+            time.sleep(1) # รอ 1 วินาทีให้หน้าเว็บโหลดแถบแดง (ถ้ามี)
+            
+            # สแกนหาข้อความ Error บนหน้าจอ
+            error_alerts = driver.find_elements(By.XPATH, "//*[contains(text(), 'The selected student id is invalid')]")
+            
+            if len(error_alerts) > 0:
+                # ถ้าเจอ Error สีแดง
+                print("❌ พลาด: รหัสนักศึกษาไม่ถูกต้อง (ไม่มีในระบบ)")
+                report['Error'] += 1
+                driver.refresh() # ต้องรีเฟรชหน้าเพื่อเคลียร์ฟอร์มแดงๆ ทิ้งก่อนทำคนต่อไป
+                continue # สั่งข้ามคนนี้ไปทำคนถัดไปในลูปทันที
+            
+            # ============================================
+            
+            # ถ้าไม่เจอ Error แสดงว่าเซฟผ่าน ก็มารอปิด Popup ตามปกติ
+            try:
+                wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "swal2-close"))).click()
+            except: 
+                pass
+            
+            if status_type == 'H': report['H'] += 1
+            else: report['S'] += 1
+            print("✔️ Success")
+
+        elif status_type == 'P':
+            # --- สำหรับ P ---
+            driver.get("https://event.osda.kmitl.ac.th/backend/event/2161/registrations/create")
+            
+            # รอแค่ให้ช่องกรอกขึ้นมา (เน้นไว)
+            id_field = wait.until(EC.presence_of_element_located((By.NAME, "student_id")))
+            id_field.send_keys(student_id)
+            
+            # กดเพิ่มปุ๊บ...
+            driver.find_element(By.XPATH, "//button[contains(., 'เพิ่ม')]").click()
+            
+            # ให้หน่วงแค่เสี้ยววินาทีพอให้ระบบบันทึก
+            time.sleep(0.5) 
+            
+            report['P'] += 1
+            print("✔️ Success (Fast)")
+
+    except Exception as e:
+        print(f"❌ พลาด: {e}")
+        report['Error'] += 1
+
+# --- 5. สรุปผล ---
+driver.quit()
+print("\n" + "="*30)
+print(f"✅ สำเร็จ: {sum(report.values())-report['Error']} | ❌ พลาด: {report['Error']}")
+print(f"📊 H: {report['H']} | S: {report['S']} | P: {report['P']}")
+print("="*30)
