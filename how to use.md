@@ -5,4 +5,4 @@ A col - student id 8 digit ex. 68010000
 B col - name ex. สมชาย ลาดกระบัง (truely this part is unnescesory , but for you to recheck the name)
 C col - status ex. H S or P
 example file : participans.csv
-4.run this code
+4.run this code , if error try CD"folder_name" in terminal
