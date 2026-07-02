@@ -76,7 +76,7 @@ for index, row in df.iterrows():
 
         elif status_type == 'P':
             # --- สำหรับ P ---
-            driver.get("https://event.osda.kmitl.ac.th/backend/event/2161/registrations/create")
+            driver.get("XXXXXXXXXXXXX") #ใส่ชื่อเว็ป
             
             # รอแค่ให้ช่องกรอกขึ้นมา (เน้นไว)
             id_field = wait.until(EC.presence_of_element_located((By.NAME, "student_id")))
